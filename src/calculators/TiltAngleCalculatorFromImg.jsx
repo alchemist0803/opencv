@@ -9,6 +9,7 @@ const TiltAngleCalculatorFromImg = () => {
   const [image2, setImage2] = useState(null);
   const [angle1, setAngle1] = useState(null);
   const [angle2, setAngle2] = useState(null);
+  const [processedImg, setProcessedImg] = useState(null);
   const [tiltAngle, setTiltAngle] = useState(null);
   const leftImgRef = useRef(null);
   const rightImgRef = useRef(null);
@@ -46,10 +47,20 @@ const TiltAngleCalculatorFromImg = () => {
 
   // Process Image with image-js
   const processImage = async (imageSrc, setAngle) => {
-    const img = await Image.load(imageSrc);
-    const gray = img.grey();
-    const edges = gray.sobelFilter(); // Edge detection
+    let img = await Image.load(imageSrc);
+    // Convert image to HSL and filter out blue hues
+    let hslImage = img.colorDepth(8).hsl();
+    for (let i = 0; i < img.width * img.height; i++) {
+      let [h, s, l] = hslImage.getPixel(i);
+      if (h > 190 && h < 250) { // Range for blue colors
+        img.setPixel(i, [255, 255, 255]); // Replace with white
+      }
+    }
 
+    const gray = img.grey();
+    // setProcessedImg(gray.toDataURL());
+    const edges = gray.sobelFilter(); // Edge detection
+    setProcessedImg(edges.toDataURL());
     // Get all edge pixels
     let edgePoints = [];
     for (let y = 0; y < edges.height; y++) {
@@ -142,6 +153,7 @@ const TiltAngleCalculatorFromImg = () => {
         </div>
         {/* Calculate Tilt Angle */}
         {tiltAngle !== null && <h3>Tilt Angle: {tiltAngle.toFixed(2)}°</h3>}
+        {processedImg !== null ? <img src={processedImg} alt="Processed" /> : null}
       </div>
     </>
   );
