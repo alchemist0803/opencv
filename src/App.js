@@ -1,6 +1,6 @@
 import ObjectDetectionFromCamera from "./calculators/ObjectDetectionFromCamera";
 import TiltAngleCalculatorFromImg from "./calculators/TiltAngleCalculatorFromImg";
-import TiltAngleCalculatorFromTensorflow from "./calculators/TiltAngleCalculatorFromTensorflow";
+import TiltAngleCalculatorFromVideo from "./calculators/TiltAngleCalculatorFromVideo";
 
 function App() {
   return (
@@ -8,9 +8,9 @@ function App() {
       {/* Image-js is working well if the image is clear, but not on practical */}
       {/* <TiltAngleCalculatorFromImg /> */}
       {/* Trying to use Tensorflow in complex situation */}
-      {/* <TiltAngleCalculatorFromTensorflow /> */}
+      <TiltAngleCalculatorFromVideo />
       {/* Using camera to capture images */}
-      <ObjectDetectionFromCamera />
+      {/* <ObjectDetectionFromCamera /> */}
     </>
   );
 }
