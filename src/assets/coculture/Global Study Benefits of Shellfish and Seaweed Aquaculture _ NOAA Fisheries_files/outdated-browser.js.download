@@ -1,0 +1,3 @@
+if (navigator.appName == 'Microsoft Internet Explorer' || !!(navigator.userAgent.match(/Trident/) || navigator.userAgent.match(/rv:11/)) || (typeof jQuery.browser !== "undefined" && jQuery.browser.msie == 1)) {
+  document.getElementById('block-outdatedbrowser').style.display ='block';
+}

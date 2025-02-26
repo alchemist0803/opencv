@@ -1,0 +1,2031 @@
+
+(function imagesJs($, Drupal) {
+  Drupal.behaviors.imagesJs = {
+    attach(context) {
+      // Go through media embeds, and alter well width to match caption size.
+      $('[id^="med-emb_"]').each(function () {
+        const imgSize = $(this).find('img').width();
+        if (imgSize !== 0) {
+          $(this).parent('figure').css('max-width', imgSize);
+        }
+      });
+    }
+  };
+})(jQuery, Drupal);
+
+// Ticket - NOAA-6304 - Follow-up re: Deleting and Unpublishing Images from Drupal Media
+// NOAA-6304 - For future images that load, handle this
+jQuery('img').on('error', function () {
+  // The following will delete the image-captions after images that fail to load
+  jQuery(this).next('.webdam-embed-caption, .dam_caption').hide();
+});
+/* eslint-disable */
+(function lightbox($, Drupal) {
+  // Drupal.behaviors.audio = {
+  //   attach(context) {
+
+  let playState = 'play';
+  let muteState = 'unmute';
+
+  $("audio").each(function (index) {
+
+    // Get the audio file before we repalce.
+    let audioFile = $(this).find('source').attr('src');
+
+    // Unique logic for dive in podcasts tkt#6685:
+    let endPath = $(location).attr("href").split('/').pop();
+    let finalAudio;
+    if ($("a[href$='1000357856']").length || endPath == 'dive-in-with-noaa-fisheries') {
+
+      // Have a check to see if url is realtive or absolute. 
+      if (audioFile.startsWith('/s3/')) {
+
+        // Here the url is relative so append the full domain and prefix.
+        finalAudio = 'https://dts.podtrac.com/redirect.mp3/' + window.location.hostname + audioFile;
+      } else {
+
+        // Here the url is absolute so just add prefix.
+        finalAudio = audioFile.replace("https://", "https://dts.podtrac.com/redirect.mp3/");
+      }
+    } else {
+      finalAudio = audioFile;
+    }
+
+    let player = `
+          <div class="audio-player-container">
+            <div>
+            <audio src="${finalAudio}" preload="none"></audio>
+            <button class="play-icon" aria-label="Play/Pause Audio"><i class="fa-solid fa-play"></i></button>
+            </div>
+            <div class="palyer-center">
+              <span class="current-time" class="time">0:00</span>
+              <input type="range" aria-label="Audio Track" class="seek-slider" max="100" value="0">
+              <span class="duration" class="time"></span>
+            </div>
+            <div>
+              <button class="mute-icon" aria-label="Mute/Unmute Audio"><i class="fa-solid fa-volume-xmark"></i></button>
+            </div>
+          </div>
+
+        `;
+    $(this).replaceWith(player);
+
+    const playIconContainer = document.getElementsByClassName('play-icon')[index];
+    const audioPlayerContainer = document.getElementsByClassName('audio-player-container')[index];
+    const seekSlider = document.getElementsByClassName('seek-slider')[index];
+    const muteIconContainer = document.getElementsByClassName('mute-icon')[index];
+    const audio = document.getElementsByTagName('audio')[index];
+    const durationContainer = document.getElementsByClassName('duration')[index];
+    const currentTimeContainer = document.getElementsByClassName('current-time')[index];
+    let raf = null;
+
+    let playState = 'play';
+    let muteState = 'unmute';
+
+    playIconContainer.addEventListener('click', () => {
+      if (playState === 'play') {
+        audio.play();
+        playIconContainer.innerHTML = '<i class="fa-solid fa-pause"></i>';
+        requestAnimationFrame(whilePlaying);
+        playState = 'pause';
+      } else {
+        audio.pause();
+        playIconContainer.innerHTML = '<i class="fa-solid fa-play"></i>';
+        cancelAnimationFrame(raf);
+        playState = 'play';
+      }
+    });
+
+    muteIconContainer.addEventListener('click', () => {
+      if (muteState === 'unmute') {
+        audio.muted = true;
+        muteState = 'mute';
+        muteIconContainer.innerHTML = '<i class="fa-solid fa-volume-off"></i>';
+      } else {
+        audio.muted = false;
+        muteState = 'unmute';
+        muteIconContainer.innerHTML = '<i class="fa-solid fa-volume-xmark"></i>';
+      }
+    });
+
+    const showRangeProgress = rangeInput => {
+      if (rangeInput === seekSlider) audioPlayerContainer.style.setProperty('--seek-before-width', rangeInput.value / rangeInput.max * 100 + '%');else audioPlayerContainer.style.setProperty('--volume-before-width', rangeInput.value / rangeInput.max * 100 + '%');
+    };
+
+    seekSlider.addEventListener('input', e => {
+      showRangeProgress(e.target);
+    });
+
+    /** Implementation of the functionality of the audio player */
+    const calculateTime = secs => {
+      const minutes = Math.floor(secs / 60);
+      const seconds = Math.floor(secs % 60);
+      const returnedSeconds = seconds < 10 ? `0${seconds}` : `${seconds}`;
+      return `${minutes}:${returnedSeconds}`;
+    };
+
+    const displayDuration = () => {
+      durationContainer.textContent = calculateTime(audio.duration);
+    };
+
+    const setSliderMax = () => {
+      seekSlider.max = Math.floor(audio.duration);
+    };
+
+    const whilePlaying = () => {
+      seekSlider.value = Math.floor(audio.currentTime);
+      currentTimeContainer.textContent = calculateTime(seekSlider.value);
+      audioPlayerContainer.style.setProperty('--seek-before-width', `${seekSlider.value / seekSlider.max * 100}%`);
+      raf = requestAnimationFrame(whilePlaying);
+    };
+
+    if (audio.readyState > 0) {
+      displayDuration();
+      setSliderMax();
+    } else {
+      audio.addEventListener('loadedmetadata', () => {
+        displayDuration();
+        setSliderMax();
+      });
+    }
+
+    seekSlider.addEventListener('input', () => {
+      currentTimeContainer.textContent = calculateTime(seekSlider.value);
+      if (!audio.paused) {
+        cancelAnimationFrame(raf);
+      }
+    });
+
+    seekSlider.addEventListener('change', () => {
+      audio.currentTime = seekSlider.value;
+      if (!audio.paused) {
+        requestAnimationFrame(whilePlaying);
+      }
+    });
+  });
+
+  //   }
+  // }
+})(jQuery, Drupal);
+/* eslint-enable */
+(function headerForm($, Drupal) {
+  Drupal.behaviors.headerForm = {
+    attach(context) {
+      // Reference to search.gov form in the header.
+      const form = document.getElementById('input-search-form');
+
+      // Adds listener for the 'submit' event.
+      form.addEventListener('submit', e => {
+        // Prevent the browser from submitting the current form.
+        e.preventDefault();
+
+        // Keeps track of whether or not the form has been submitted.
+        // Prevents the form from being submitted twice in cases where 'hitcallback' fires normally.
+        let formSubmitted = false;
+
+        function submitForm() {
+          if (!formSubmitted) {
+            formSubmitted = true;
+            form.submit();
+          }
+        }
+
+        // Get value from search input.
+        const searchText = document.getElementById('header-search').value;
+
+        // Create timeout to call 'submitform' after one second.
+        setTimeout(submitForm, 1000);
+
+        // Sends event to google analytics.  Resubmits form once hit is done.
+        ga('send', 'event', 'govsearch', 'submit', searchText, { // eslint-disable-line no-undef
+          hitcallback: submitForm
+        });
+      });
+    }
+  };
+})(jQuery, Drupal);
+(function scrollToTop($, Drupal) {
+  Drupal.behaviors.scrollToTop = {
+    attach(context) {
+      window.addEventListener('scroll', () => {
+        // Determine the distance from top on scroll
+        let height = document.documentElement ? document.documentElement.scrollTop : document.scrollingElement.scrollTop;
+
+        // Fall back for iOS since document.documentElement.scrollTo = 0
+        if (height === 0) {
+          height = document.scrollingElement.scrollTop;
+        }
+
+        if (height >= 100) {
+          // If page is scrolled more than 99px
+          $('#scroll-to-top', context).fadeIn(350); // Button fades in
+        } else {
+          $('#scroll-to-top', context).fadeOut(350); // Else button fades out
+        }
+      });
+      $('#scroll-to-top', context).click(() => {
+        // When the arrow is clicked
+        $('html, body').animate({
+          scrollTop: 0 // Scroll to the top of body
+        }, 500);
+        return false; // Ensuring the href action is not called
+      });
+    }
+  };
+})(jQuery, Drupal);
+/* eslint-disable */
+(function subnavtab($, Drupal) {
+
+  // function to change tab based by hash value.
+  function changeTab($hash) {
+
+    // Remove active tab class
+    $('.hero-link--subnav').each(function () {
+      $(this).removeClass('hero-sub-nav__link--active');
+    });
+
+    // When hash changes hide all content wells.
+    $('.subnav-tab__content').hide();
+
+    // Find the active tab.
+    activeTab = $('.hero-link--subnav').filter(function () {
+      return $(this).prop('href').indexOf($hash) != -1;
+    });
+
+    // Set the new tab as active
+    activeTab.addClass('hero-sub-nav__link--active');
+
+    // Using value show the well.
+    $($hash).show();
+  }
+
+  // check if about page, (not ideal but we may need to do something else)
+  // if (window.location.href.indexOf("about-us") > -1) {
+
+  //   // On click of legacy links if there is a hash value.
+  //   $('.hero-link--subnav').on('click', function() {
+  //     $(window).on('hashchange',function(){ 
+
+  //       changeTab(location.hash);
+
+  //     });
+  //   });
+
+
+  //   // On load of legacy pages.
+  //   $(document).ready(function() {
+
+  //     let hash = '';
+
+  //     if (location.hash) {
+  //       hash = location.hash;
+  //     } else {
+  //       hash = '#overview';
+  //     }
+
+  //     changeTab(hash);
+
+  //   });
+
+  // }
+})(jQuery, Drupal, drupalSettings);
+/* eslint-enable */
+(function regionMap($, Drupal) {
+  Drupal.behaviors.rmap = {
+    attach(context) {
+      const setRegionState = (target, action) => {
+        const regionName = $(target).attr('id');
+        const regionClass = `.interactive-map__region--${regionName}`;
+
+        if (action === 'add') {
+          $(regionClass).addClass('active');
+        } else {
+          $(regionClass).removeClass('active');
+        }
+      };
+
+      $('.interactive-map__key-link', context).hover(e => {
+        setRegionState(e.target, 'add');
+      }, e => {
+        setRegionState(e.target, 'remove');
+      });
+    }
+  };
+})(jQuery, Drupal);
+/* eslint-disable */
+(function ($) {
+  // Quick script to append the meta-title tag for the podcast about page.
+  // check if text exsits within div.
+  // template file found web/themes/custom/noaa_components/templates/landing-pages/podcast-landing/node--page--podcastdive-in-with-noaa-fisheries.html.twig 
+  if ($('.field--name-field-meta-title').text().length > 0) {
+
+    $(document).prop('title', $('.field--name-field-meta-title').text() + ' | NOAA Fisheries');
+  }
+
+  if ($('#podcast-date').length > 0) {
+    $('#podcast-date').text($('.views-field-created').text());
+  }
+})(jQuery, Drupal);
+/* eslint-enable */
+/* eslint-disable */
+(function podcasttranscript($, Drupal) {
+  Drupal.behaviors.podcasttranscript = {
+    attach(context) {
+
+      once('podcasttranscript', 'html').forEach(function (element) {
+
+        $('#podcast-teaser__transcript-close').on('click', e => {
+          $('#podcast-teaser__transcript').slideToggle();
+          $('#podcast-teaser__transcript-toggle').text('View Transcript');
+        });
+
+        $('#podcast-teaser__transcript-toggle').on('click', e => {
+          $('#podcast-teaser__transcript').slideToggle();
+          $('#podcast-teaser__transcript-toggle').text(function (i, text) {
+            return text === "View Transcript" ? "Close Transcript" : "View Transcript";
+          });
+        });
+      });
+    }
+  };
+})(jQuery, Drupal);
+/* eslint-enable */
+/* eslint-disable */
+(function promobannerScript($, Drupal) {
+  Drupal.behaviors.promobanner = {
+    attach(context) {
+
+      // Here we hide the block by defualt, and only show if a user does not close it out.
+      // This way the block will never show up on pages after a user clicks close.
+
+      // Look for promo banner
+      let promoCloseBtn = $('#block-promobanner').find('.promo-banner__icon');
+
+      // Get the current time.
+      const currTime = new Date().getTime();
+
+      // On click of button hide.
+      $(promoCloseBtn).on('click', function () {
+        $('#block-promobanner').hide();
+
+        // Set local storage with current time.
+        localStorage.setItem('lastclear', currTime);
+      });
+
+      // If promoBanner local storage is not set we show it.
+      if (localStorage.getItem("lastclear") === null) {
+
+        $('#block-promobanner').show();
+      } else {
+
+        const lastclear = localStorage.getItem('lastclear');
+        const days = 1000 * 60 * 60 * 7;
+
+        // Ensures that the banner reappears after 7 days, bust local and show banner.
+        if (currTime - lastclear > days) {
+          localStorage.clear();
+          $('#block-promobanner').show();
+        }
+      }
+
+      // Check if the url has seafood, if so show the seafood banner.
+      if (window.location.href.indexOf('/topic/sustainable-seafood') > -1 || window.location.href.indexOf('/species-directory/sustainable-seafood') > -1) {
+
+        if ($('#block-seafoodpromo').find('img').length) {
+          $('#block-seafoodpromo').show();
+        }
+      }
+
+      // if page has seafood div?
+      $('.sub-nav__link').each(function () {
+        if (this.href.indexOf('/seafood') != -1) {
+          $('#block-seafoodpromo').show();
+        }
+      });
+    }
+  };
+})(jQuery, Drupal);
+/* eslint-enable */
+(function showhideScript($, Drupal) {
+  Drupal.behaviors.showhide = {
+    attach(context) {
+      const facts = $('.quick-fact__fact', context);
+      let i = 0;
+      facts.hide().eq(i).show();
+
+      $('.quick-fact__another-fact', context).on('click', e => {
+        e.preventDefault();
+
+        i = (i + 1) % facts.length;
+        facts.hide().eq(i).show();
+      });
+    }
+  };
+})(jQuery, Drupal);
+(function speciesOverviewScript($, Drupal) {
+  Drupal.behaviors.speciesOverview = {
+    attach(context) {
+      $('.seafood_tab_link').on('click', e => {
+        $("a[href='#seafood']").click();
+      });
+    }
+  };
+})(jQuery, Drupal);
+(function tocScript($, Drupal, debounce, drupalSettings) {
+  Drupal.behaviors.toc = {
+    attach(context) {
+      function setID(contentBody) {
+        // @TODO Set ID for other heading h3, h4, etc.
+        contentBody.find('h2').each(function () {
+          let title = $(this).text();
+
+          // Strip the unnecessary markup from WYSIWYG
+          // MV. 6.27.19 - added regex function to strip all tags from title value. Tkt#: NOAA-3482
+          title = title.replace('&nbsp;', ' ').replace("/[^A-Za-z0-9' –]/", '').replace(/<[^>]*>?/gm, '').trim();
+          // Prep the title for ID
+          title = title.toLowerCase().split(' ').join('-');
+
+          title = title.replace(/[(),‘“”:|{}’'"/<>;#!@$%^&*~.`?]/g, '');
+
+          $(this).attr('id', title);
+        });
+      }
+
+      function stickyScroll() {
+        // Get the TOC element
+        const TOC = $('.toc', context)[0];
+        // Get the .row parent of the TOC element
+        const TOCWrap = TOC.parentElement.parentElement;
+        // Get some basic information about the bounding box on that parent.
+        const TOCWrapRect = TOCWrap.getBoundingClientRect();
+        // Get the actual TOC content on the page. This might not be the best way, but we need the height of the
+        // content in the sibling column.
+        const content = document.getElementsByClassName('toc-filter')[0];
+        // Get the bounding box info for the content.
+        const contentRect = content.getBoundingClientRect();
+        // Set a variable that we'll use to check if our position on the page is between the top and bottom of the content.
+        const contentSize = contentRect.top - contentRect.bottom + TOC.getBoundingClientRect().height;
+
+        // If the TOCWrapRect's position from the top is less than 0 (going negative!) and we're within contentSize:
+        // Just make it sticky.
+        if (TOCWrapRect.top <= 0 && TOCWrapRect.top >= contentSize) {
+          TOC.classList.remove('toc__sticky--bottom');
+          TOC.classList.add('toc__sticky');
+        }
+        // If we're outside of the contentSize parameters, stick that sucker to the bottom of content size.
+        else if (TOCWrapRect.top < contentSize) {
+            TOC.classList.remove('toc__sticky');
+            TOC.classList.add('toc__sticky--bottom');
+          }
+          // In any other case, just make things normal.
+          else {
+              TOC.classList.remove('toc__sticky');
+              TOC.classList.remove('toc__sticky--bottom');
+            }
+      }
+
+      const TOC = $('.toc', context)[0];
+      const tocHeight = $('.toc', context).height();
+      const windowHeight = window.innerHeight;
+
+      // Make the menu sticky if the TOC menu's height is smaller than the window
+      if (windowHeight > tocHeight) {
+        // Run our sticky function once when the page loads if a TOC element is found.
+        if (document.body.contains(TOC)) {
+          stickyScroll();
+        }
+
+        const scrollChange = debounce(() => {
+          stickyScroll();
+        });
+
+        if (document.body.contains(TOC)) {
+          window.addEventListener('scroll', scrollChange, false);
+
+          // Highlight nav links when scrolling the page
+          window.addEventListener('scroll', () => {
+            $('.toc-filter', context).find('h2').each(function () {
+              const titleScroll = $(this).offset().top;
+
+              // If you scroll by the title, add active class
+              if ($(window).scrollTop() + 100 >= titleScroll) {
+                const titleID = $(this).attr('id');
+
+                if ($('.toc__list-link').hasClass('toc__list-link--active')) {
+                  $('.toc__list-link').removeClass('toc__list-link--active');
+                }
+
+                $(`.toc__list-link[href="#${titleID}"]`).addClass('toc__list-link--active');
+              }
+            });
+          });
+        }
+      }
+
+      // Check to make sure drupalSettings variable is set to not throw any error
+      if (drupalSettings.toc !== undefined) {
+        // Get content type from drupalSettings variable
+        const contentType = drupalSettings.toc.content_type;
+        const contentBody = $(`.${contentType}__content`, context);
+
+        // Create ID in headers if contentBody element exists
+        if (document.body.contains(contentBody[0])) {
+          // Using once() function to make sure our function is called only once
+          contentBody.once('tocSetID', setID(contentBody));
+        }
+      }
+    }
+  };
+})(jQuery, Drupal, Drupal.debounce, drupalSettings);
+/* eslint-disable */
+(function landingtabContent($, Drupal) {
+
+  function showHideTab(tabId) {
+    // remove active tab link and set new one.
+    $('.landing-tab__link').each(function () {
+      $(this).removeClass('landing-tab__link--active');
+
+      // Apply new active tab.
+      if ($(this).attr('href') == tabId) {
+        $(this).addClass('landing-tab__link--active');
+      }
+    });
+
+    // Hide old content.
+    $('.landing-tab__content').fadeOut(100);
+
+    // Show new content.
+    $(tabId).fadeIn(100);
+  }
+
+  $(document).ready(function () {
+
+    $('.landing-tab__link').on('click', function (e) {
+
+      // trigger only with link hash.
+      if ($(this).attr('href').startsWith("#")) {
+        let tabId = $(this).attr('href');
+        window.location.hash = tabId;
+        e.preventDefault();
+
+        showHideTab(tabId);
+
+        setTimeout(function () {
+          window.scrollTo(0, 0);
+        }, .1);
+      }
+    });
+    if (window.location.hash) {
+
+      if ($('.landing-tab').length) {
+
+        if (location.hash) {
+          setTimeout(function () {
+            window.scrollTo(0, 0);
+          }, 1);
+        }
+
+        if (window.location.hash) {
+
+          let pageHash = window.location.hash;
+          showHideTab(pageHash);
+        }
+      }
+    }
+  });
+
+  Drupal.behaviors.landingtabContent = {
+    attach(context) {
+
+      // Custom Search Bar
+      const searchInput = $('.input-search--secondary', context).find('input[type=search]');
+      const search = $('.input-search__button--secondary', context);
+      let searchValue;
+
+      search.click(e => {
+        e.preventDefault();
+        // If user does not enter value in search input, define default search value.
+        if (searchInput.val() === '') {
+          searchValue = '';
+        } else {
+          searchValue = searchInput.val();
+        }
+
+        // Determine the search page using the input id and value.
+        window.location.href = `/${searchInput.attr('id')}/?title=${searchValue}`;
+      });
+    }
+  };
+})(jQuery, Drupal);
+/* eslint-enable */
+/* eslint-disable radix */
+(function lightbox($, Drupal) {
+  Drupal.behaviors.lightbox = {
+    attach(context, settings) {
+      // function gets and sets lightbox data attributes.
+      function getTileData(id) {
+        const tileData = document.querySelector(`#${id}`);
+        const image = tileData.dataset.mediaUrl;
+        const caption = tileData.dataset.mediaCaption;
+        const nextId = `tile_${parseInt(tileData.dataset.id) + 1}`;
+        const backId = `tile_${parseInt(tileData.dataset.id) - 1}`;
+
+        $('#lightbox--img').attr('src', image);
+        $('#lightbox--caption').text(caption);
+        $('#next--btn').attr('data-btn-next', nextId);
+        $('#back--btn').attr('data-btn-back', backId);
+
+        // If div exists, show the respective back or next button.
+        if ($(`#${nextId}`).length) {
+          $('#next--btn').show();
+        } else {
+          $('#next--btn').hide();
+        }
+        if ($(`#${backId}`).length) {
+          $('#back--btn').show();
+        } else {
+          $('#back--btn').hide();
+        }
+      }
+
+      // Count each div, and set ID.
+      $.each($('.lightbox__target'), function (ind) {
+        $(this).attr('id', `tile_${parseInt(ind)}`);
+        $(this).attr('data-id', parseInt(ind));
+      });
+
+      // On click of .lightbox__target (i.e. gallery tile), fade in lightbox. (jQuery seems to not work here with attr.);
+      $('.lightbox__target').click(() => {
+        // reattach div outside of current well to avoid responsive cropping of background
+        $('.lightbox').appendTo('body');
+        $('#lightbox--img').attr('src', '');
+        getTileData(event.target.parentNode.id);
+        $('.lightbox').fadeIn().css('display', 'grid');
+        $('body').css('overflow', 'hidden');
+        $('.lightbox').css('overflow', 'scroll');
+      });
+
+      $('#next--btn', context).click(() => {
+        getTileData(document.querySelector('#next--btn').dataset.btnNext);
+      });
+
+      $('#back--btn', context).click(() => {
+        getTileData(document.querySelector('#back--btn').dataset.btnBack);
+      });
+
+      // On click of .lightbox__close, fade out lightbox.
+      $('#lightbox--close').click(() => {
+        $('.lightbox').fadeOut();
+        $('body').css('overflow', 'scroll');
+        $('.lightbox').css('overflow', 'hidden');
+      });
+    }
+  };
+})(jQuery, Drupal);
+(function modal($, Drupal) {
+  /* eslint-disable */
+
+  // Check if the page hass .img-responsive class 
+  if ($(".img-responsive")[0]) {
+
+    // Create lightbox well.
+    const lightbox = `
+      <div class="lightbox">
+      <div class="lightbox__container">
+        
+        <div class="lightbox__header">
+          <div id="lightbox--close" class="lightbox__close"><i class="fas fa-times"></i><span>Close</span></div>
+        </div>
+
+        <div class="lightbox__body" data-lightbox="">
+          <img id="lightbox--img" src="" alt="">
+          <div id="lightbox--caption" class="caption"></div>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+    // Append to body
+    $('body').append(lightbox);
+
+    // On click load high res url and show box.
+    $('.modal__target .img-responsive, .article__hero .img-responsive, .wyswyg-edit .img-responsive, .wyswyg-edit .lazyloaded, .resource-overview .img-responsive, .species-right-image .img-responsive').on('click', function () {
+
+      // Reset lightbox src
+      $('#lightbox--img').attr('src', '');
+      $('#lightbox--caption').text('');
+
+      // Logic to get high res image.
+      const regex = /styles.*\/s3\//;
+      let originalImgSrc = $(this).attr('src');
+      let highResImg = originalImgSrc.replace(regex, '');
+
+      // Get caption
+      let caption;
+      if ($(this).next().attr('class') == 'dam_caption') {
+        caption = $(this).next().text();
+      } else {
+
+        // Here we need to check it the next item for WYSIWYG is a figcaption.
+        if ($(this).closest('.embedded-entity').next().is('figcaption')) {
+          caption = $(this).closest('.embedded-entity').next().text(); // WYSWYG caption
+        } else {
+          caption = ''; // no value for caption.
+        }
+      }
+
+      // Prepare lightbox
+      $('#lightbox--img').attr('src', highResImg);
+      $('#lightbox--caption').text(caption);
+      $('.lightbox__body').css('display', 'block');
+
+      // Only show when image
+      var image = new Image();
+      image.onload = function () {
+
+        // Cap the width to 1400px
+        if (image.width >= '1400') {
+          $('.lightbox__container').css('max-width', '1400px');
+        } else {
+          $('.lightbox__container').css('max-width', image.width);
+        }
+        $('body').css('overflow', 'hidden');
+        $('.lightbox').css('overflow', 'scroll');
+        $('.lightbox').fadeIn();
+      };
+
+      image.src = highResImg;
+    });
+  }
+
+  /* eslint-enable */
+})(jQuery, Drupal);
+(function footerMenu($, Drupal) {
+  Drupal.behaviors.footerMenu = {
+    attach(context) {
+      // Set variables
+      const menu = $('.footer-menu > .footer-menu__items', context);
+      const mql = window.matchMedia('(max-width: 767px)');
+      let count = 0;
+
+      function addCollapseMenu(heading, content) {
+        // Set the attributes for Collapse Heading
+        if (!heading.hasClass('collapse__heading')) {
+          heading.attr({
+            'data-toggle': 'collapse',
+            'aria-expanded': 'false',
+            'aria-controls': `collapse--${count}`,
+            href: `#collapse--${count}`
+          });
+          heading.addClass('collapse__heading');
+        }
+
+        // Set the attribute for Collapse Content
+        if (!content.hasClass('collapse')) {
+          content.attr({
+            id: `collapse--${count}`,
+            'aria-labelledby': `collapse--${count}`
+          });
+          content.addClass('collapse');
+        }
+
+        // Increase count
+        count += 1;
+      }
+
+      function removeCollapseMenu(heading, content) {
+        // Remove attributes
+        if (heading.hasClass('collapse__heading')) {
+          heading.removeClass('collapse__heading');
+          heading.removeAttr('id data-toggle aria-expanded aria-controls href');
+        }
+
+        if (content.hasClass('collapse')) {
+          content.removeClass('collapse');
+          content.removeAttr('id collapse aria-labelledby aria-expanded height');
+        }
+
+        count = 0;
+      }
+
+      function checkWindowWidth(heading, content) {
+        // If the viewport is on extra small device, trigger mobile menu
+        if (mql.matches) {
+          addCollapseMenu(heading, content);
+        }
+        // Else, disable mobile menu
+        else {
+            removeCollapseMenu(heading, content);
+          }
+      }
+
+      // Triggers a function after user finishes resizing the browser
+      function doneResizing() {
+        menu.find('.footer-menu__item').each(function () {
+          const collapseHeading = $(this).find('.footer-menu__title-link');
+          const collapseContent = collapseHeading.next('.footer-menu__items');
+
+          checkWindowWidth(collapseHeading, collapseContent);
+        });
+      }
+
+      menu.find('.footer-menu__item').once().each(function () {
+        // Find the elements to add the collapse classes to
+        const collapseHeading = $(this).find('.footer-menu__title-link');
+        const collapseContent = collapseHeading.next('.footer-menu__items');
+
+        if (mql.matches) {
+          addCollapseMenu(collapseHeading, collapseContent);
+        }
+      });
+
+      // Enable Bootstrap Collapse Menu
+      $('.collapse').collapse('hide');
+
+      // Register Resize Function
+      let resizeTimer;
+
+      $(window).resize(() => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(doneResizing, 300);
+      });
+    }
+  };
+})(jQuery, Drupal);
+/* eslint-disable */
+
+(function siteHeader($, Drupal) {
+  'use strict';
+
+  Drupal.behaviors.siteHeader = {
+    attach: context => {
+      const mql = window.matchMedia('(max-width: 991px)');
+      const toplevelItem = $('.main-menu__item--expanded > .main-menu__link', context);
+      const linkbehavior = 'touchstart';
+      let resizeTimer;
+      let timer;
+
+      // const allPanels = $('.accordion > dd').hide();
+      // $('.accordion > dt > a').on('click', (e) => {
+      //   allPanels.slideUp(); 
+      //   $(this).parent().next().slideDown();
+      //   alert('here');
+      //   return false;
+      // });
+
+      //Checking for mobile for functionality of USA Banner
+      if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        $('.link--darkergray_first').after('</br>');
+        $('.blue-chevron').add('.link_second').on('click', e => {
+          e.preventDefault();
+          if ($('.blue-chevron').hasClass('fa-chevron-down')) {
+            $('.blue-chevron').addClass('hidden');
+            $('.link_second').addClass('hidden');
+            $('#usa--banner_x').removeClass('hidden');
+            $('.usa-accordion').removeClass('hidden');
+          } else {
+            $('.blue-chevron').toggleClass('fa-chevron-up fa-chevron-down');
+            $('.usa-accordion').addClass('hidden');
+            $('#usa--banner_x').addClass('hidden');
+          }
+        });
+        $('.link--darkergray_first').add('#usa--banner_x').on('click', e => {
+          if ($('.blue-chevron').hasClass('fa-chevron-down')) {
+
+            $('.blue-chevron').removeClass('hidden');
+            $('.link_second').removeClass('hidden');
+            $('.usa-accordion').addClass('hidden');
+          }
+        });
+      } else {
+        $('.blue-chevron').add('.link_second').on('click', e => {
+          e.preventDefault();
+
+          if ($('.blue-chevron').hasClass('fa-chevron-down')) {
+            $('.blue-chevron').toggleClass('fa-chevron-down fa-chevron-up');
+            $('.usa-accordion').removeClass('hidden');
+          } else {
+            $('.blue-chevron').toggleClass('fa-chevron-up fa-chevron-down');
+            $('.usa-accordion').addClass('hidden');
+          }
+        });
+      }
+
+      // Closes out main menu items
+      const closeMainMenu = menu => {
+        menu.each(index => {
+          const menuItem = menu[index];
+          const menuSiblingLink = menu[index].previousElementSibling;
+          if (menuItem.className.indexOf('main-menu--hidden') < 0) {
+            $(menuSiblingLink).removeClass('active');
+            menuItem.classList.add('main-menu--hidden');
+            // Finish the loop early if menu to hide is found
+            return false;
+          }
+        });
+      };
+
+      // Closes out mobile menu items
+      const closeMobileMenu = menu => {
+        menu.each(index => {
+          const menuItem = menu[index];
+          const menuSiblingLink = menu[index].previousElementSibling;
+
+          if (menuItem.className.indexOf('main-menu--hidden') < 0) {
+            menuItem.classList.add('main-menu--hidden');
+            $(menuSiblingLink).removeClass('active');
+            // Finish the loop early if menu to hide is found
+            return false;
+          }
+        });
+      };
+
+      // Calculates the menu height and pushes content based on the height
+      const moveContent = (pushed, height) => {
+        const main = $('main[role="main"]', context);
+        const footer = $('footer[role="contentinfo"]', context);
+
+        if (pushed) {
+          main.addClass('mobile-menu--pushed');
+          footer.addClass('mobile-menu--pushed');
+
+          // Push the content down based on the height of the menu
+          main.css({
+            '-webkit-transform': `translate3d(0, ${height}px, 0)`,
+            '-moz-transform': `translate3d(0, ${height}px, 0)`,
+            transform: `translate3d(0, ${height}px, 0)`
+          });
+          footer.css({
+            '-webkit-transform': `translate3d(0, ${height}px, 0)`,
+            '-moz-transform': `translate3d(0, ${height}px, 0)`,
+            transform: `translate3d(0, ${height}px, 0)`
+          });
+        } else {
+          main.removeClass('mobile-menu--pushed');
+          footer.removeClass('mobile-menu--pushed');
+
+          // Move the content back to its original place
+          main.css({
+            '-webkit-transform': 'translate3d(0, 0, 0)',
+            '-moz-transform': 'translate3d(0, 0, 0)',
+            transform: 'translate3d(0, 0, 0)'
+          });
+          footer.css({
+            '-webkit-transform': 'translate3d(0, 0, 0)',
+            '-moz-transform': 'translate3d(0, 0, 0)',
+            transform: 'translate3d(0, 0, 0)'
+          });
+        }
+      };
+      // Commented all calls to this function out on 4/11/22 for ticket NOAA-5497
+      // Updates Menu Aria Attributes
+      const updateMenuAttr = obj => {
+        const expanded = $(obj).attr('aria-expanded');
+        const hidden = $(obj).attr('aria-hidden');
+
+        $(obj).attr({
+          'aria-expanded': expanded === 'false' ? 'true' : 'false',
+          'aria-hidden': hidden === 'true' ? 'false' : 'true'
+        });
+      };
+
+      const openMainMenu = e => {
+        e.preventDefault();
+        const el = e.target;
+        const targetmenu = el.nextElementSibling;
+        const submenu = $('.main-menu__container--mega', context);
+
+        // Show mega menu on initial click and hide surrounding menu
+        if ($(targetmenu).hasClass('main-menu--hidden')) {
+          closeMainMenu(submenu);
+
+          $(el).addClass('active');
+          $(targetmenu).removeClass('main-menu--hidden');
+        }
+      };
+
+      // Opens Main Menu on mouseover in Desktop and Tablet View
+      toplevelItem.add('.main-menu__container--mega').on('mouseover', e => {
+        e.preventDefault();
+        const mainmenu = $('.main-menu__container--mega', context);
+        const mainMenuLink = $('.main-menu__link');
+        mainMenuLink.addClass('mouseIsOver');
+        mainMenuLink.removeClass('mouseNotOver');
+        clearTimeout(timer);
+        if (!mainmenu.length) {
+          closeMainMenu(mainmenu);
+        } else if (mainmenu.length) {
+          setTimeout(() => {
+            if (mainMenuLink.hasClass('mouseIsOver')) {
+              openMainMenu(e);
+            }
+          }, 500);
+        }
+      }).on('mouseleave', e => {
+        e.preventDefault();
+        const mainmenu = $('.main-menu__container--mega', context);
+        const mainMenuLink = $('.main-menu__link');
+        mainMenuLink.addClass('mouseNotOver');
+        mainMenuLink.removeClass('mouseIsOver');
+        if (!$(e.relatedTarget).hasClass('main-menu--mega main-menu--2')) {
+          timer = setTimeout(() => {
+            if (mainmenu.length) {
+              closeMainMenu(mainmenu, true);
+            }
+          }, 500);
+        }
+      });
+
+      // Open Main Menu on Keyboard for accessibility})})
+      toplevelItem.on('click', e => {
+        const mainmenu = $('.main-menu__container--mega', context);
+        if (!mainmenu.length) {
+          closeMainMenu(mainmenu);
+        } else {
+          openMainMenu(e);
+        }
+      });
+
+      // Opens Main Menu in Mobile View
+      $('.site-header__menu-link', context).on('click', () => {
+        const targetMenu = $(context).find('.mobile-menu__level[data-level="1"]');
+        const transformHeight = targetMenu.outerHeight();
+
+        // Show "active" style for the header link button
+        $(this).toggleClass('site-header__menu-link--active');
+
+        // Toggle Aria Attributes
+        // updateMenuAttr($(this));
+
+        // Show First Level of Mobile Menu and Push Main Content/Footer Down
+        $(context).find('.mobile-menu__level[data-level="1"]').toggleClass('mobile-menu__level--open');
+
+        // Hide the secondary menu if mobile menu is closing
+        const secondarymenu = $('.mobile-menu__level[data-level="2"]', context);
+
+        if (secondarymenu.hasClass('mobile-menu__level--open')) {
+          // updateMenuAttr(secondarymenu);
+          secondarymenu.removeClass('mobile-menu__level--open');
+        }
+
+        // Determine if the content has been pushed or not
+        const contentPushed = $(context).find('main[role="main"]').hasClass('mobile-menu--pushed');
+        moveContent(!contentPushed, transformHeight);
+      });
+
+      $('.mobile-menu__item--first > .mobile-menu__link', context).on('click', e => {
+        // Prevent link from navigating to the node page
+        e.preventDefault();
+        const el = e.target;
+        const targetmenu = el.nextElementSibling;
+        const transformHeight = $(targetmenu).outerHeight();
+        let contentPushed;
+
+        // Show header's level 2 menu
+        $(targetmenu).toggleClass('mobile-menu__level--open');
+
+        // Toggle aria attributes
+        // updateMenuAttr(targetmenu);
+        // Will need to pass true since child links never closes the menu
+        moveContent(true, transformHeight);
+      });
+
+      $('.mobile-menu__back .link', context).on('click', e => {
+        e.preventDefault();
+        const el = e.target;
+        const targetmenu = $(el).parents('.mobile-menu__level[data-level="1"]');
+        const transformHeight = targetmenu.outerHeight();
+
+        // Hide header's level 2 menu
+        $(el).parent().parent('.mobile-menu__level').removeClass('mobile-menu__level--open');
+
+        // Will need to pass true since Back link never closes the menu
+        moveContent(true, transformHeight);
+      });
+
+      // Check to see if the menu should be closed upon browser sizing
+      $(window).on('resize', () => {
+        clearTimeout(resizeTimer);
+
+        resizeTimer = setTimeout(() => {
+          // If browser is resized to tablet/mobile view
+          if (mql.matches) {
+            const mainmenu = $('.main-menu__container--mega', context);
+            closeMainMenu(mainmenu);
+          }
+          // If browser is resized to desktop view
+          else {
+              // Hide the secondary menu if mobile menu is closing
+              const mobilemenu = $('.mobile-menu__level[data-level="1"]', context);
+              const secondarymenu = $('.mobile-menu__level[data-level="2"]', context);
+
+              if (secondarymenu.hasClass('mobile-menu__level--open')) {
+                // updateMenuAttr(secondarymenu);
+                secondarymenu.removeClass('mobile-menu__level--open');
+              }
+
+              if (mobilemenu.hasClass('mobile-menu__level--open')) {
+                // updateMenuAttr(mobilemenu);
+                mobilemenu.removeClass('mobile-menu__level--open');
+              }
+
+              // Will need to pass false since we are closing mobile menu
+              moveContent(false, 0);
+            }
+        }, 250);
+      });
+
+      // Closes the Main Menu when you click anything other than Main Menu
+      $(document).on('click', e => {
+        if (!$(e.target).hasClass('site-header__menu-icon') && !$(e.target).hasClass('site-header__menu-link') && !$(e.target).hasClass('link')) {
+          const mobileMenu = $(context).find('.mobile-menu__level[data-level="1"]');
+          const mainmenu = $('.main-menu__container--mega', context);
+          if (mainmenu.length) {
+            closeMainMenu(mainmenu);
+          }
+          if (mobileMenu.length) {
+            if (!$(e.target).parents('#input-search-form_header-search-mobile').length && !$(e.target).hasClass('input-search') && !$(e.target).hasClass('mobile-menu__back')) {
+              // Toggle Aria Attributes
+              // updateMenuAttr(mobileMenu);
+              // Close First Level of Mobile Menu and Push Main Content/Footer Down
+              mobileMenu.removeClass('mobile-menu__level--open');
+
+              // Hide the secondary menu if mobile menu is closing
+              const secondarymenu = $('.mobile-menu__level[data-level="2"]', context);
+
+              if (secondarymenu.hasClass('mobile-menu__level--open')) {
+                // updateMenuAttr(secondarymenu);
+                secondarymenu.removeClass('mobile-menu__level--open');
+              }
+
+              // Un-push content
+              const transformHeight = mobileMenu.outerHeight();
+              const contentPushed = $(context).find('main[role="main"]').removeClass('mobile-menu--pushed');
+              moveContent(!contentPushed, transformHeight);
+            }
+          }
+        }
+      });
+    }
+  };
+})(jQuery, Drupal);
+/* eslint-ensable */
+/* eslint-disable */
+(function subnavtab($, Drupal) {
+
+  Drupal.behaviors.subnavtab = {
+    attach: function (context, settings) {
+
+      // Tkt#: 6301: When user clicks on clear link remove the action in the form.
+      // Hack due to core view Ajax reset bug. https://www.drupal.org/project/better_exposed_filters/issues/2996297
+      // https://www.drupal.org/project/drupal/issues/3346820
+      $("button[id^='edit-reset']").on('click', function (e) {
+        e.preventDefault();
+        var onlyUrl = window.location.href.replace(window.location.search, '');
+        $('#views-exposed-form-species-directory-v2-block-1').attr('action', onlyUrl);
+        $('#views-exposed-form-species-directory-v2-block-1').attr('method', 'post');
+        $('#views-exposed-form-species-directory-v2-block-1').submit();
+      });
+
+      // Default SP Illustration
+      $('.paragraph--view-mode--search-preview-image').each(function () {
+        if ($(this).find('.field--name-field-dam-media').length == 0) {
+          $(this).next().show();
+        }
+      });
+
+      $('document').ready(function () {
+
+        //for the about-us who we are tab. Styling the headers according to section id
+        if ($('#block-noaa-components-aboutusmeetourleadershiphead').length) {
+          $('#block-noaa-components-aboutusmeetourleadershiphead .leadership-list__header').css('background', '#007eb2');
+        }
+
+        if ($('#block-noaa-components-aboutusmeetourleadershipregulations').length) {
+          $('#block-noaa-components-aboutusmeetourleadershipregulations .leadership-list__header').css('background', '#00467f');
+        }
+
+        if ($('#block-noaa-components-aboutusmeetourleadershipscience').length) {
+          $('#block-noaa-components-aboutusmeetourleadershipscience .leadership-list__header').css('background', '#008391');
+        }
+
+        if ($('#block-noaa-components-aboutusmeetourleadershipoperations').length) {
+          $('#block-noaa-components-aboutusmeetourleadershipoperations .leadership-list__header').css('background', '#625bc4');
+        }
+
+        // Ensure no pre-saved values are set on reload.
+        if ($('.sf-profiles--view-embed').length) {
+          $("#edit-field-region-vocab option:eq(0)").prop("selected", true);
+          $("#edit-field-species-categories-vocab-1 option:eq(0)").prop("selected", true);
+          $("#edit-field-species-categories-vocab option:eq(0)").prop("selected", true);
+        }
+
+        // Run loader graphic
+        $('.pager__item--page, .form-submit, .pager__item--previous-link, .pager__item--next-link ').on('click', function () {
+
+          $('.view-content').addClass('loader');
+          $('.loader').css('height', $('.view-content').height());
+          $('.views-row').fadeTo(500, 0.05);
+        });
+      });
+
+      $('document').ajaxComplete(function () {
+        $('.view-content').removeClass('loader');
+      });
+
+      if (!$('#sf_information').length) {
+        if ($('#featured_profile').text().length) {
+          $('.views-exposed-form').append('<div id="sf_information" >' + $('#featured_profile').text() + '</div>');
+        }
+      }
+    }
+  };
+})(jQuery, Drupal, drupalSettings);
+/* eslint-enable */
+(function tabbedcontentScript($, Drupal) {
+  Drupal.behaviors.tabbedcontent = {
+    attach(context) {
+      const tab = $('.tabbed-content__tab', context);
+      const pages = document.getElementsByClassName('tabbed-content__page');
+
+      // Handle click events on tabs.
+      tab.click(e => {
+        // Prevent default event and blur focus from tab.
+        e.preventDefault();
+        $(e.target).blur();
+
+        const pageID = $(e.target).data('tab-no');
+        let siblingPage;
+
+        // Loop over all the tabbed-content pages on the page.
+        // Remove active classes and define the sibling page that matches our clicked tab.
+        for (let i = 0; i < pages.length; i++) {
+          $(pages[i]).removeClass('tabbed-content__page--active');
+          if ($(pages[i]).data('page') === pageID) {
+            siblingPage = $(pages[i]);
+          }
+        }
+        // Remove any active tab classes.
+        tab.removeClass('tabbed-content__tab--active');
+
+        // Assign active classes to current tab and sibling page.
+        $(e.target).addClass('tabbed-content__tab--active');
+        siblingPage.addClass('tabbed-content__page--active');
+      });
+    }
+  };
+})(jQuery, Drupal);
+/* eslint-disable */
+(function verticalFilter($, Drupal) {
+  // Drupal.behaviors.verticalFilter = {
+  //   attach(context) {
+
+  const iconWrapper = `<span class="fa fa-plus vertical-filter__item-icon"></span>`;
+
+  // Add icon to each fieldgroup
+  $('.fieldgroup').each(function () {
+    $(this).find('.fieldset__legend').append(iconWrapper);
+
+    // We hide them all as a defualt.
+    $(this).find('.fieldset__content').hide();
+
+    // Go through all and see if there is a checked box.
+    $(this).find('.form-checkbox').each(function () {
+
+      // If checked show the content well & update icon.
+      if ($(this).is(':checked')) {
+        $(this).closest('fieldset').find('.fieldset__content').show();
+        $(this).closest('fieldset').find('.vertical-filter__item-icon').removeClass('fa-plus');
+        $(this).closest('fieldset').find('.vertical-filter__item-icon').addClass('fa-minus');
+      }
+    });
+  });
+
+  // On click of icon, show/hide list / change icon.
+  $('.vertical-filter__item-icon, .fieldset__legend-label').on('click', function () {
+
+    $(this).closest('fieldset').find('.fieldset__content').slideToggle();
+
+    // In the case of user clicking label we need to adjust the logic a bit.
+    let toggleIcon = '';
+    if ($(this).hasClass('fieldset__legend-label')) {
+      toggleIcon = $(this).next();
+    } else {
+      toggleIcon = $(this);
+    }
+
+    // Add condition to check if lable is clicked as well.
+    // Check if user clicked plus/minus icon
+    if (toggleIcon.hasClass('fa-plus')) {
+      toggleIcon.removeClass('fa-plus');
+      toggleIcon.addClass('fa-minus');
+    } else {
+      toggleIcon.removeClass('fa-minus');
+      toggleIcon.addClass('fa-plus');
+    }
+  });
+
+  // const initDropdown = (state) => {
+  //   const iconWrapper = `<span class="fa fa-${state} vertical-filter__item-icon"></span>`;
+
+  //   // Add icon to the filter menu section
+  //   $(context).once('addToggleIcon').find('.vertical-filter__item-group').each(function () {
+  //     $(this).find('.fieldset__legend').append($(iconWrapper));
+  //   });
+  // };
+
+  // $('.vertical-filter', context).children('.vertical-filter__item-group').each(function () {
+  //   let state;
+  //   const wrapper = $(this).find('.fieldset').find('.fieldset__content');
+  //   const checked = wrapper.find(':checked');
+
+  //   // Set the state of the filter menu.
+  //   // Check if the filter criteria has been selected. If so, set the toggle state as `open`.
+  //   if (checked.length > 0) {
+  //     state = 'minus';
+  //   }
+  //   else {
+  //     state = 'plus';
+  //     wrapper.hide();
+  //   }
+
+  //   initDropdown(state);
+  // });
+
+  // $('.vertical-filter__item-icon', context).once().click(function () {
+  //   $(this).closest('.fieldset').find('.fieldset__content').slideToggle();
+
+  //   let nextState;
+
+  //   // Toggle the filter icon when `.fieldset__content` is open/closed.
+  //   if ($(this).hasClass('fa-minus')) {
+  //     nextState = 'plus';
+  //   }
+  //   else if ($(this).hasClass('fa-plus')) {
+  //     nextState = 'minus';
+  //   }
+  //   else {
+  //     // Setting a default state, just in case...
+  //     nextState = 'plus';
+  //   }
+
+  //   $(this).attr('class', `fa fa-${nextState} vertical-filter__item-icon`);
+  // });
+
+  // // Open the Filter Menu when you click on the label
+  // $('.fieldset__legend-label', context).once().click(function () {
+  //   $(this).closest('.fieldset').find('.fieldset__content').slideToggle();
+
+  //   const nextIcon = $(this).closest('.fieldset').find('.vertical-filter__item-icon');
+  //   let nextState;
+
+  //   // Toggle the filter icon when `.fieldset__content` is open/closed.
+  //   if (nextIcon.hasClass('fa-minus')) {
+  //     nextState = 'plus';
+  //   }
+  //   else if (nextIcon.hasClass('fa-plus')) {
+  //     nextState = 'minus';
+  //   }
+  //   else {
+  //     // Setting a default state, just in case...
+  //     nextState = 'plus';
+  //   }
+
+  //   nextIcon.attr('class', `fa fa-${nextState} vertical-filter__item-icon`);
+  // });
+  //   },
+  // };
+})(jQuery, Drupal);
+/* eslint-enable */
+/* eslint-disable */
+(function longformScript($, Drupal) {
+  Drupal.behaviors.longform = {
+    attach() {
+      if ($('#more-information').length) {
+        $('.info-links').find('.info-links__title').remove();
+      }
+    }
+  };
+})(jQuery, Drupal);
+/* eslint-enable */
+(function noaaSearchScript($, Drupal) {
+  Drupal.behaviors.noaaSearch = {
+    attach(context) {
+      $('.pager__item--previous').hide();
+      $('.pager__item--next').hide();
+      //       const urlParams = new URLSearchParams(window.location.search);
+      //       const queryParam = urlParams.get('oq');
+      //       $('.noaa-search .webdam-image-caption-container').addClass('hidden');
+      //       $('.noaa-search .media-thumbnail').each((index, element) => {
+      //         const media = $(element).css('background-image');
+      //         if (media.indexOf('amazonaws') === -1) {
+      //           $(element).addClass('hidden');
+      //         }
+      //         else {
+      //           $(element).closest('.views-field').next('.views-field').addClass('hidden');
+      //         }
+      //       });
+      //       $('.media-tile').each((index) => {
+      //         if ($('.media-tile').attr('data-media-url') === '/') {
+      //           $('.media-tile').hide();
+      //         }
+      //       });
+      //       // Parse param.
+      //       const terms = queryParam.split(' ');
+      //       // Identify the field with data by class.
+      //       const elements = document.getElementsByClassName('summery-text');
+      //       if ($('#tile_0').attr('data-media-id').length < 0) {
+      //         $('#tile_0').hide();
+      //       }
+      //       // Loop through the items div rows.
+      //       for (let i = 0; i < elements.length; i++) {
+      //         terms.forEach((item) => {
+      //           const data = elements[i].innerHTML;
+      //           // Set case insensitive using regex.
+      //           const re = new RegExp(item, 'i');
+      //           const match = data.match(re);
+
+      //           // Run match.
+      //           if (match) {
+      //             const highlight = `<highlight>${match}</highlight>`;
+      //             const res = data.replace(match, highlight);
+
+      //             // Replace
+      //             elements[i].innerHTML = res;
+      //           }
+
+      //           if ($('img')[i].attr('src').indexOf('webdamdb')) {
+      //             $('.media-thumbnail').hide();
+      //           }
+      //         });
+      //       }
+    }
+  };
+})(jQuery, Drupal);
+/* eslint-disable no-unused-expressions */
+// Drupal behavior that controls the display all link on species directory.
+(function speciesDirecotryScript($, Drupal) {
+  Drupal.behaviors.speciesDirecotry = {
+    attach(context) {
+      function selectIndex($id, $key) {
+        document.getElementById($id).selectedIndex = $key;
+      }
+
+      function getIndex($id) {
+        const index = document.getElementById($id).selectedIndex;
+        return index;
+      }
+
+      $('#display_all_link').click(function cc() {
+        document.getElementById('items_per_page').selectedIndex = '3';
+        $('#species_directory').submit();
+      });
+
+      // Sort by Species Name and show corresponding arrow based selected index.
+      $('#hc_species_name').click(function sort() {
+        if (getIndex('filter_sort') === 5) {
+          selectIndex('filter_sort', 0);
+        } else {
+          selectIndex('filter_sort', 5);
+        }
+        $('#species_directory').submit();
+      });
+      if (getIndex('filter_sort') === 5) {
+        $('#hc_species_name .fa-sort-down').show();
+        $('#hc_species_name .fa-sort').remove();
+      }
+
+      // Sort by Species Category and show corresponding arrow based selected index.
+      $('#hc_species_category').click(function sort() {
+        if (getIndex('filter_sort') === 1) {
+          selectIndex('filter_sort', 2);
+        } else {
+          selectIndex('filter_sort', 1);
+        }
+        $('#species_directory').submit();
+      });
+      if (getIndex('filter_sort') === 1) {
+        $('#hc_species_category .fa-sort-up').show();
+        $('#hc_species_category .fa-sort').hide();
+      }
+      if (getIndex('filter_sort') === 2) {
+        $('#hc_species_category .fa-sort-down').show();
+        $('#hc_species_category .fa-sort').hide();
+      }
+
+      // Sort by Species Region and show corresponding arrow based selected index.
+      $('#hc_region').click(function sort() {
+        if (getIndex('filter_sort') === 3) {
+          selectIndex('filter_sort', 4);
+        } else {
+          selectIndex('filter_sort', 3);
+        }
+        $('#species_directory').submit();
+      });
+      if (getIndex('filter_sort') === 3) {
+        $('#hc_region .fa-sort-up').show();
+        $('#hc_region .fa-sort').hide();
+      }
+      if (getIndex('filter_sort') === 4) {
+        $('#hc_region .fa-sort-down').show();
+        $('#hc_region .fa-sort').hide();
+      }
+    }
+  };
+})(jQuery, Drupal);
+/* eslint-disable no-unused-expressions */
+// Drupal behavior that controls the display all link on species directory.
+// To do, at some point the page through a pre-processor and not hard code with JS
+(function speciesDirecotryScript($, Drupal) {
+  Drupal.behaviors.speciesDirecotry = {
+    attach(context) {
+      if ($('.content-header__title').text() === 'Photo Gallery') {
+        $('a').each(function (index) {
+          const text = $(this).text();
+
+          if ($(this).parents('.views-row').length) {
+            switch (text) {
+              case 'National':
+                $(this).addClass('link link--region link--region-national');
+                $(this).attr('href', `${window.location.origin}/about-us`);
+                break;
+              case 'International':
+                $(this).addClass('link link--region link--region-international');
+                $(this).attr('href', `${window.location.origin}/topic/international-affairs`);
+                break;
+              case 'Alaska':
+                $(this).addClass('link link--region link--region-alaska');
+                $(this).attr('href', `${window.location.origin}/region/alaska`);
+                break;
+              case 'Southeast':
+                $(this).addClass('link link--region link--region-southeast');
+                $(this).attr('href', `${window.location.origin}/region/southeast`);
+                break;
+              case 'West Coast':
+                $(this).addClass('link link--region link--region-west-coast');
+                $(this).attr('href', `${window.location.origin}/region/west-coast`);
+                break;
+              case 'Pacific Islands':
+                $(this).addClass('link link--region link--region-pacific-islands');
+                $(this).attr('href', `${window.location.origin}/region/pacific-islands`);
+                break;
+              case 'New England/Mid-Atlantic':
+                $(this).addClass('link link--region link--region-mid-atlantic');
+                $(this).attr('href', `${window.location.origin}/region/new-england-mid-atlantic`);
+                break;
+              default:
+            }
+          }
+        });
+      }
+    }
+  };
+})(jQuery, Drupal);
+/* eslint-disable */
+(function spd($, Drupal) {
+  // Drupal.behaviors.spd = {
+  //   attach(context) {
+
+  if ($('.species-directory-v2').length) {
+
+    // // Direct query attempt.
+    // $('#edit-oq').val($('#edit-oq').val().replaceAll('\"', ''));
+
+    // // Update query on submit to add double quotes
+    // $('form').submit(function(e) {
+
+    //   if ($('#edit-oq').val() !== '') {
+    //     let oldval = '\"' + $('#edit-oq').val() + '\"';
+    //     $('#edit-oq').once().val(oldval);
+    //   }
+
+    // });
+
+    // $('#edit-oq').focus(function() {
+    //   $(this).val($(this).val().replaceAll('\"', ''));
+    // });
+    // // End Direct query attempt.
+
+    $('#edit-items-per-page option:last').show();
+
+    // Get table sort values.
+    let labelText = $('#view-title-table-column a').text();
+    let linkValue = $('#view-title-table-column a').attr('href');
+
+    // Lets make the up and down links.
+    let acsLink = linkValue.replace('desc', 'asc');
+    let descLink = linkValue.replace('asc', 'desc');
+    $('#edit-items-per-page option:last').hide();
+
+    // Arrow Markup
+    if (linkValue.includes("&sort=asc")) {
+      $sortArrowMarkup = labelText + '<span class="sort-arrows"><span data-link="' + acsLink + '" class="sort-arrow sort-arrows--up" aria-label="Asc">▲</span></span>';
+    } else {
+      $sortArrowMarkup = labelText + '<span class="sort-arrows"><span data-link="' + descLink + '" class="sort-arrow sort-arrows--down" aria-label="Desc">▼</span></span>';
+    }
+
+    // Arrow Markup
+    // $sortArrowMarkup = labelText + '<span class="sort-arrows"><span data-link="'+ acsLink +'" class="sort-arrow sort-arrows--up" aria-label="Asc">▲</span><span data-link="'+ descLink +'" class="sort-arrow sort-arrows--down" aria-label="Desc">▼</span></span>';
+
+    // Rebuild and append.
+    $('#view-title-table-column').html($sortArrowMarkup);
+
+    // Click Listen
+    $('.sort-arrows').on('click', '.sort-arrow', function () {
+      window.location.href = $(this).attr('data-link');
+    });
+
+    // Auto submit pager
+    $('#edit-items-per-page').change(function () {
+      $('#sd-btn-submit').click();
+    });
+
+    // Default SP Illustration
+    $('.paragraph--view-mode--search-preview-image').each(function () {
+      if ($(this).find('.field--name-field-dam-media').length == 0) {
+        $(this).next().show();
+      }
+    });
+
+    function isEmpty(el) {
+      return !$.trim(el.html());
+    }
+
+    // Show null line if profile has no status.
+    $('tbody .views-field-field-species-status-details').find('.paragraph--type--species-status-details').each(function () {
+      if (isEmpty($(this))) {
+        $(this).closest('li').remove();
+      }
+    });
+
+    // ESA Tab Only
+    if ($('.tab-esa').length || $('.tab-mm').length) {
+      // Go through list and then remove non-esa
+      $('.paragraph--type--species-status-details').each(function () {
+        let text = $(this).find('.field--name-field-species-details-status').find('.field--item').text();
+        // ESA Experimental Population
+        if ($('.tab-esa').length) {
+
+          let removeList = ['ESA Delisted', 'ESA Proposed for Delisting', 'ESA Under Review for Delisting', 'ESA Petitioned'];
+
+          if (!text.startsWith('ESA') || jQuery.inArray(text, removeList) !== -1) {
+            $(this).parent().remove();
+          }
+        }
+
+        // Change status text.
+        let statusText = $(this).find('.field--name-field-species-details-dps .field--item').text();
+        if (statusText == 'Throughout Its Range' || statusText == 'Throughout its Range' || statusText == 'Throughout the Wider Caribbean Region') {
+          $(this).find('.field--name-field-species-details-dps .field--item').text('Species');
+        }
+      });
+
+      // Update ESA Table Header
+      $('#view-field-species-status-details-table-column').html(`
+          <div class="sp-sub-col sp-col-head">Listed Entity</div>
+          <div class="sp-sub-col sp-col-head">Protected Status</div>
+          <div class="sp-sub-col sp-col-head sp-year">Year Listed</div>
+          <div class="sp-sub-col sp-col-head sp-rp">Recovery Plan</div>
+          <div class="sp-sub-col sp-col-head sp-ch">Critical Habitat</div>
+          <div class="sp-sub-col sp-col-head">Region</div>
+          `);
+    } else {
+
+      // Species status formatting.
+      $('tbody .views-field-field-species-status-details').find('ul').each(function () {
+        if (isEmpty($(this))) {
+          $(this).html('<li>---</li>');
+        }
+
+        var uniqueStatus = [];
+        $(this).find('li').each(function (i, elem) {
+          let txt = $(elem).text();
+          uniqueStatus.push($.trim(txt.replace(/[\t\n]+/g, ' ')));
+        });
+
+        // Remove duplciates.
+        var seen = {};
+        $(this).find('li').each(function (i, elem) {
+          var txt = $(this).text();
+          if (seen[txt]) $(this).remove();else seen[txt] = true;
+        });
+
+        // Finally remove any empty vals.
+        if ($(this).text().trim().length == 0) {
+          $(this).html('<li>---</li>');
+        }
+
+        // let newSort = jQuery.uniqueSort( uniqueStatus );
+        // $(this).html(newSort.join("<li/>"));
+      });
+
+      // Adjust for Species DPS
+      $('tbody .views-field-field-species-details-dps, tbody .views-field-field-species-details-year, tbody .views-field-field-species-details-recovery, tbody .views-field-field-species-details-critical').each(function () {
+
+        // Get text value and break into array.
+        let html = $(this).html();
+        let oldText = $.trim(html.replace(/<!--(.*?)-->/ig, '')); // Remove dev markup
+        let list = oldText.split(', ');
+        let uniqueList = _.uniq(list); // Remove duplicates.
+
+        // Loop through array and build list.
+        let newHtml = '';
+        $.each(uniqueList, function (i, obj) {
+
+          // Replace name.
+          let text = 'Species';
+          if (obj == 'Throughout Its Range' || obj == 'Throughout its Range') {
+            text = 'Species';
+          } else {
+            text = obj;
+          }
+          newHtml += '<li>' + text + '</li>';
+        });
+
+        // Replace DOM with new list
+        $(this).html('<ul>' + newHtml + '</ul>');
+      });
+    }
+
+    $('.cshs-term-group__term').each(function () {
+      $(this).wrapInner('<span></span>');
+    });
+
+    function hide(varBar) {
+      $('td').each(function () {
+        if ($(this).find('.sp-sub-col').length) {
+          $(this).find('.sp-sub-col').each(function () {
+            let text = $(this).text().replace(/ /g, '');
+            if (text.includes('---')) {
+              if (varBar == 'yes') {
+                $(this).hide();
+              } else {
+                $(this).show();
+              }
+            }
+          });
+        } else {
+          let text = $(this).text().replace(/ /g, '');
+          if (text.includes('---')) {
+            if (varBar == 'yes') {
+              $(this).hide();
+            } else {
+              $(this).show();
+            }
+          }
+        }
+
+        $(this).find('.mobile-lable').not(':first').remove();
+      });
+    }
+
+    if ($(window).width() <= 800) {
+      hide('yes');
+    };
+
+    $(window).on('resize', function () {
+      if ($(this).width() <= 800) {
+        hide('yes');
+      } else {
+        hide();
+      }
+    });
+  }
+  //   },
+  // };
+})(jQuery, Drupal);
+/*eslint-enable */
+/* eslint-disable */
+// Drupal behavior that controls the display all link on species directory.
+(function staffDirecotryScript($, Drupal) {
+  Drupal.behaviors.speciesDirecotry = {
+    attach(context) {
+      // Logic to prevent form submit via enter (only temp until revert)
+      $('.staff-directory form').bind('keypress', e => {
+        if (e.keyCode === 13) {
+          e.preventDefault();
+          return false;
+        }
+      });
+
+      $('#staff-directory-submit').unbind().on('click', e => {
+        e.preventDefault();
+        let queryString = window.location.href.split('?')[0];
+
+        if ($('#edit-title').val()) {
+          queryString = queryString.concat('?title='.concat($('#edit-title').val()));
+          location.href = queryString;
+        }
+      });
+
+      $('#view-all-staff-directory').unbind().on('click', e => {
+        e.preventDefault();
+        location.href = location.href.split('?')[0].concat('?');
+      });
+
+      // NOAA-5280: revert for a later date.
+      $('#staff-directory-submit').unbind().on('click', e => {
+        e.preventDefault();
+        let queryString = window.location.href.split('?')[0];
+        let parentTermId = document.getElementById('edit-field-division-vocab-target-id--level-1').options[0].getAttribute('data-parent-value');
+
+        if ($('#edit-title').val()) {
+          queryString = queryString.concat('?title='.concat($('#edit-title').val()));
+        }
+        if (queryString.indexOf('?') >= 0) {
+          if (parentTermId !== $('select[name=field_division_vocab_target_id]').val()) {
+            queryString = queryString.concat('&field_division_vocab_target_id='.concat($('select[name=field_division_vocab_target_id]').val()));
+          }
+        } else {
+          if (parentTermId === $('select[name=field_division_vocab_target_id]').val()) {
+            queryString = location.href.split('?')[0].concat();
+          } else {
+            queryString = queryString.concat('?field_division_vocab_target_id='.concat($('select[name=field_division_vocab_target_id]').val()));
+          }
+        }
+        location.href = queryString;
+        // console.log($('select[name=field_division_vocab_target_id]').val());
+      });
+      $('#view-all-staff-directory').unbind().on('click', e => {
+        e.preventDefault();
+        location.href = location.href.split('?')[0].concat();
+      });
+
+      // NOAA-5776: updated id label.
+
+      // Code to hide show all btn, by parm. Added in 5603.
+      const urlParams = new URLSearchParams(window.location.search);
+      const hasTitle = urlParams.has('title');
+      const hasId = urlParams.has('field_division_vocab_target_id');
+
+      if (hasTitle || hasId) {
+        $('#view-all-staff-directory').show();
+      }
+    }
+  };
+
+  $(document).ready(function () {
+    $('#move-label').prependTo('.select-wrapper--level-1');
+  });
+})(jQuery, Drupal);
+/*eslint-enable */
+/* eslint-disable */
+(function topic($, Drupal) {
+  Drupal.behaviors.topic = {
+    attach(context) {
+      // $('select[name ="field_region_vocab_target_id_1"]').css('display', 'none');
+      // $('input[ name="title_1"]').css('display', 'none');
+      // $('select[name ="field_region_vocab_target_id"]').on('change', function () {
+      //   const regionId = $(this).find(':selected').val();
+      //   const regionText = $('[name=field_region_vocab_target_id] option:selected').text();
+      //   $('[name=field_region_vocab_target_id_1] option:selected').text(regionText);
+      //   $('[name=field_region_vocab_target_id_1]').val(regionId);
+      // });
+      // $('input[name="title"]').on('change', function () {
+      //   $('input[name="title_1"]').val($(this).val());
+      // });
+
+      // $('#sp_region__select').find("option").css("color", "rgb(0, 70, 127)");
+      // $('#sp_type__select').find("option").css("color", "rgb(0, 70, 127)");
+      // // $('#sp_region__select').prop('selectedIndex',0);
+
+      // $('#seafood-profiles').find("a.species-card").each(function() {
+      //   if ($(this).attr('href').indexOf('#seafood') === -1) {
+      //     var href = $(this).attr('href');
+      //     $(this).attr('href', href + '#seafood')
+      //   }
+      // });
+
+      // $('#sf-btn-submit').on('click', function() {
+      //   var inputVal = document.getElementById("seafood-profile__title").value;
+      //   inputVal = inputVal.toLowerCase();
+      //   // inputVal = inputVal.replace(" ", "-");
+      //   var url = window.location.origin + '/species-directory/sustainable-seafood?oq=' + inputVal + '&field_species_categories_vocab_1=All&field_species_categories_vocab=All&field_region_vocab=All&items_per_page=25';
+
+      //   if (url) { // require a URL
+      //         window.location = url; // redirect
+      //     }
+      //     return false;
+      // });
+      // $('#sp_region__select').on('change', function() {
+      //   var url = window.location.origin + '/species-directory/sustainable-seafood?oq=&field_species_categories_vocab_1=All&field_species_categories_vocab=All&field_region_vocab=' + $(this).val() + '&items_per_page=25'
+      //   if (url) {
+
+      //         window.location = url;
+      //     }
+      //     return false;
+      // });
+      // $('#sp_type__select').on('change', function () {
+      //   var url = window.location.origin + '/species-directory/sustainable-seafood?oq=&field_species_categories_vocab_1=' + $(this).val() + '&field_species_categories_vocab=All&field_region_vocab=All&items_per_page=25';
+      //   if (url) {
+
+      //         window.location = url;
+      //     }
+      //     return false;
+      // });
+      // $('.clear_filters').on('click', function() {
+      //   $('#seafood-profile__title').val('');
+      //   $('#sp_region__select').prop('selectedIndex',0);
+      //   $('#sp_type__select').prop('selectedIndex',0);
+      // });
+
+    }
+  };
+})(jQuery, Drupal);
+/*eslint-enable */
+(function report($, Drupal) {
+  Drupal.behaviors.report = {
+    attach(context) {
+      if (window.location.href.indexOf('report') > -1) {
+        const tocLink = $('.interactive-map__key-link', context);
+        const regionLink = $('.interactive-map__region', context);
+
+        const showRegionContacts = id => {
+          const sidebar = document.getElementsByClassName('report__sidebar');
+          const content = document.getElementsByClassName('report__content');
+          const sidebarClass = `.report__sidebar--${id}`;
+          const contentClass = `.report__content--${id}`;
+          const target = $(contentClass);
+
+          // Loop over all the TOC and Blocks on the page and remove active classes.
+          for (let i = 0; i < content.length; i++) {
+            $(content[i]).removeClass('report__content--active');
+          }
+
+          for (let i = 0; i < sidebar.length; i++) {
+            $(sidebar[i]).removeClass('report__sidebar--active');
+          }
+
+          // Display Content
+          $(sidebarClass).addClass('report__sidebar--active');
+          $(contentClass).addClass('report__content--active');
+
+          // Smooth Scroll to Content on Click
+          if (target.length) {
+            $('html, body').animate({
+              scrollTop: target.offset().top
+            }, 1000);
+          }
+
+          return false;
+        };
+
+        tocLink.click(e => {
+          e.preventDefault();
+          $(e.target).blur();
+
+          const blockID = $(e.target).attr('href').replace('#', '');
+          showRegionContacts(blockID);
+        });
+
+        regionLink.click(e => {
+          e.preventDefault();
+          $(e.target).blur();
+
+          const blockID = $(e.target.parentElement).attr('href').replace('#', '');
+          showRegionContacts(blockID);
+        });
+
+        // Check window hash and scrolls to requested content.
+        const pageHash = window.location.hash;
+        showRegionContacts(pageHash.replace('#', ''));
+      }
+    }
+  };
+})(jQuery, Drupal);
+(function siteIndex($, Drupal) {
+  Drupal.behaviors.siteIndex = {
+    attach(context) {
+      if (window.location.href.indexOf('site-index') > -1) {
+        let ToC = '<div class="site-index__sidebar-toc">' + '<ul class="toc__list">';
+
+        $('.site-index__section-title > h2', context).each(function () {
+          const el = $(this);
+          const title = el.text();
+          /* eslint-disable prefer-template */
+          const link = '#' + el.attr('id');
+
+          const newLine = '<li class="toc__list-item">' + '<a class="toc__list-link" href="' + link + '">' + title + '</a>' + '</li>';
+
+          ToC += newLine;
+        });
+
+        ToC += '</ul>' + '</div>';
+
+        // Insert the ToC after the title we've placed in the twig template.
+        if ($('.site-index__sidebar-toc').length < 1) {
+          $(ToC).insertAfter('.site-index__sidebar-title');
+        }
+
+        // Ensure scrolling is smooth.
+        $('a[href*="#"]').on('click', function () {
+          $('html, body').animate({
+            scrollTop: $($(this).attr('href')).offset().top
+          }, 500, 'linear');
+        });
+      }
+    }
+  };
+})(jQuery, Drupal);
+//# sourceMappingURL=script.js.map

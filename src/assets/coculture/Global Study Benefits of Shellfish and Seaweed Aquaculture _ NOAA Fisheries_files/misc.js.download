@@ -1,0 +1,7 @@
+
+jQuery(document).ready(function () {
+
+    jQuery(('a[href*="@"]')).each(function () {
+        jQuery(this).css('text-decoration', 'underline');
+    });
+});

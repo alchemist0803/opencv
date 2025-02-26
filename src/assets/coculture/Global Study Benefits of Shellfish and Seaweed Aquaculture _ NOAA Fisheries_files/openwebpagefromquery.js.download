@@ -1,0 +1,35 @@
+(function () {
+  // Opens a pop-up window based on the URL and species code parameters
+  const akr_OpenWebPageFromQuery = (theURL, speciesCode) => {
+    const extURL = theURL + "?spCode=" + speciesCode;
+    window.open(extURL, "", "menu=no,resizable,width=500,height=500,scrollbars", false);
+  }
+
+  // Find the target
+  const target = document.querySelectorAll('.external-popup');
+  // const targetList = target[0].getElementsByTagName('a');
+  const targetLength = target.length;
+
+  // Check if the target items exist on the page
+  if (targetLength > 0) {
+    for(let i = 0; i < targetLength; i++) {
+      target[i].onclick = (e) => {
+        // Prevent default link behavior
+        e.preventDefault();
+        console.log(e);
+        // Retrieve information from the target element
+        const item = e.target;
+
+        let itemUrl = item.parentElement.href;
+        let itemCode = item.parentElement.id;
+
+        if(!itemUrl && !itemCode) {
+          itemUrl = item.href;
+          itemCode = item.id;
+        }
+
+        akr_OpenWebPageFromQuery(itemUrl, itemCode);
+      }
+    };
+  }
+})();
